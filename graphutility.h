@@ -10,24 +10,24 @@
 // Модель Боллобаша-Риордана
 graph preferred_attachment(unsigned, unsigned);
 
-class top_sort
+class top_sort: public std::function<std::
+        vector<unsigned>(const graph&)>
 {
 private:
-	mutable std::vector<unsigned> ans;
-	mutable std::set<unsigned> used;
+    mutable std::set<unsigned> used;
 	const graph* gr;
-	void dfs(unsigned);
+    void dfs(const unsigned&, std::vector<unsigned>&);
 public:
-	const std::vector<unsigned>& sort(const graph& grph)
+    std::vector<unsigned> operator()(const graph& grph)
 	{
 		gr = &grph;
 		used.clear();
-		ans.clear();
+        std::vector<unsigned> ans;
 		for (auto it = grph.begin(); it != grph.end(); ++it)
 		{
 			auto i = used.find(it->first);
 			if (i == used.end())
-				dfs(it->first);
+                dfs(it->first, ans);
 		}
 		std::reverse(ans.begin(), ans.end());
 		return ans;

@@ -5,7 +5,7 @@
 #include <QFileDialog>
 #include <QFile>
 #include <QTextStream>
-#include "graph.h"
+#include "graphutility.h"
 
 namespace Ui {
 class MainWindow;

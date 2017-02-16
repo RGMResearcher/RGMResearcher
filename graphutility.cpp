@@ -40,14 +40,14 @@ graph preferred_attachment(unsigned n, unsigned m)
 	return gr;
 }
 
-void top_sort::dfs(unsigned v)
+void top_sort::dfs(const unsigned &v, std::vector<unsigned>& ans)
 {
 	used.insert(v);
 	auto it1 = gr->find(v);
 	for (auto& it : it1->second.output)
 	{
 		if (it.first != v && used.find(it.first) == used.end())
-			dfs(it.first);
+            dfs(it.first, ans);
 	}
 	ans.push_back(v);
 }
@@ -60,9 +60,8 @@ std::map<unsigned, double> page_rank(const graph& gr, const double& c,
 	for (auto& i : gr)
 		ret.insert({ i.first, 1.0 });
 	top_sort srt;
-	const std::vector<unsigned>& v_s = srt.sort(gr);
-	double dlt;
-	unsigned count = 0;
+    std::vector<unsigned> v_s(std::move(srt(gr)));
+    double dlt;
 	do
 	{
 		dlt = 0;
@@ -77,8 +76,7 @@ std::map<unsigned, double> page_rank(const graph& gr, const double& c,
 					continue;
 				auto it1 = gr.find(v.first);
 				temp += ret[v.first] / (it1->second.out_d -
-					it1->second.output.count(v.first)); // ОШИБКА
-				throw std::string("Неверно считается степень верины и количество петель");
+                    it1->second.loop);
 			}
 			total += temp*c;
 			temp = 0;

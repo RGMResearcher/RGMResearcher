@@ -6,7 +6,7 @@
 
 class graph
 {
-    struct links
+    struct vertex
 	{
 		// Входящая степень
 		unsigned in_d,
@@ -21,19 +21,19 @@ class graph
 
 		typedef std::unordered_map<unsigned, unsigned>::iterator iterator;
 
-		links() :in_d(0), out_d(0), loop(0){}
-		links(const links& lnk) :input(lnk.input), output(lnk.output), in_d(lnk.in_d),
+        vertex() :in_d(0), out_d(0), loop(0){}
+        vertex(const vertex& lnk) :input(lnk.input), output(lnk.output), in_d(lnk.in_d),
 			out_d(lnk.out_d), loop(lnk.loop){}
-		links(links&& lnk) :input(std::move(lnk.input)), in_d(std::move(lnk.in_d)),
+        vertex(vertex&& lnk) :input(std::move(lnk.input)), in_d(std::move(lnk.in_d)),
 			out_d(std::move(lnk.out_d)), output(std::move(lnk.output)),
 			loop(std::move(lnk.loop)){}
 	};
 
 private:
 	unsigned m; // Число рёбер
-	mutable std::unordered_map<unsigned, links> v;
+    mutable std::unordered_map<unsigned, vertex> v;
 public:
-	typedef std::unordered_map<unsigned, links>::iterator iterator;
+    typedef std::unordered_map<unsigned, vertex>::iterator iterator;
 
 	graph() :m(0){}
 	graph(const graph& gr) :v(gr.v), m(gr.m){}
@@ -57,7 +57,7 @@ public:
 	{
         auto it = v.find(index);
         if (it == v.end())
-            return v.insert({ index, links() }).first;
+            return v.insert({ index, vertex() }).first;
         else
             return it;
 	}

@@ -66,6 +66,12 @@
       <height>231</height>
      </rect>
     </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+    <property name="resizeAnchor">
+     <enum>QGraphicsView::NoAnchor</enum>
+    </property>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
