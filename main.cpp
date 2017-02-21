@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include <QApplication>
 
-#include "graphutility.h"
 unsigned clustered()
 {
     graph gr = clustered_graph(20, 4, 6).first;
@@ -30,7 +29,7 @@ unsigned clustered()
     cout << "Clusterisation started...\n";
     t1 = clock();
     */
-    ob(gr);
+    ob.init(gr);
     t1 = clock() - t1;
     return t1;
 }

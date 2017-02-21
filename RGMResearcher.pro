@@ -35,3 +35,13 @@ HEADERS  += mainwindow.h \
     graphutility.h
 
 FORMS    += mainwindow.ui
+
+INCLUDEPATH += "C:/Graphviz2.38/include/graphviz"
+
+release {
+    LIBS += "-LC:/Graphviz2.38/lib/release/lib"
+}
+
+debug {
+    LIBS += "-LC:/Graphviz2.38/lib/debug/lib"
+}
