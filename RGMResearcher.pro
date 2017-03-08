@@ -27,14 +27,17 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     clusterisator.cpp \
     graph.cpp \
-    graphutility.cpp
+    graphutility.cpp \
+    graphview.cpp
 
 HEADERS  += mainwindow.h \
     clusterisator.h \
     graph.h \
-    graphutility.h
+    graphutility.h \
+    graphview.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    graphview.ui
 
 INCLUDEPATH += "C:/Graphviz2.38/include/graphviz"
 

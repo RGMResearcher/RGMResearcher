@@ -31,6 +31,12 @@ public:
         output(std::move(lnk.output)), loop(std::move(lnk.loop)){}
 };
 
+// параметры для взвешенного графа
+class v_vertex
+{
+
+};
+
 class graph
 {
 private:
