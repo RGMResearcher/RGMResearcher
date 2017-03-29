@@ -8,15 +8,16 @@ void clusterisator::erase_from_cl(std::map<unsigned, cluster>::
 {
     it->second.g.erase(current->first);
     v_to_cl.erase(current->first);
-    if (it->second.g.empty())
+    if (it->second.g.size() == 1)
     {
+        v_to_cl.erase(*it->second.g.begin());
         clusters.erase(it);
         return;
     }
     // пересчёт параметров
     unsigned aij_temp = 0;
     if (it->second.g.size() < current->second.in_d +
-            current->second.out_d)
+        current->second.out_d)
     {
         for (auto& i : it->second.g)
         {
@@ -50,8 +51,8 @@ void clusterisator::erase_from_cl(std::map<unsigned, cluster>::
 // иннициализация cl(смежные кластеры) и no_cl(смежные вершины,
 // не лежащие в кластере)
 void clusterisator::_Init(std::map<unsigned, unsigned>& cl,
-    std::map<unsigned, unsigned>& no_cl, const std::unordered_map<
-                          unsigned, unsigned>& graph_v)
+    std::map<unsigned, unsigned>& no_cl, const std::map<
+    unsigned, unsigned>& graph_v)
 {
     for (auto& i : graph_v)
     {
@@ -130,7 +131,7 @@ bool clusterisator::move_anywhere(graph::iterator& it)
         if (flag == 0)
         {
             max = { d_modular(it,
-                    clusters[it1->first], it1->second), it1->first };
+                clusters[it1->first], it1->second), it1->first };
             ++it1;
             flag = 2;
         }
@@ -167,7 +168,7 @@ bool clusterisator::move_anywhere(graph::iterator& it)
 void clusterisator::meta_graph()
 {
     graph meta_gr;
-    std::unordered_map<unsigned, std::list<unsigned>> tmp_result;
+    std::map<unsigned, std::list<unsigned>> tmp_result;
     for (auto& i : clusters)
     {
         auto it = meta_gr.new_vertex(i.first);
@@ -185,7 +186,7 @@ void clusterisator::meta_graph()
             if (out == fr)
             {
                 it->second.splice(it->second.end(),
-                                        result[j.first]);
+                    result[j.first]);
             }
             else
             {
@@ -198,20 +199,22 @@ void clusterisator::meta_graph()
             if (out == fr)
             {
                 it->second.splice(it->second.end(),
-                                        result[j.first]);
+                    result[j.first]);
             }
         }
     }
+
     for (auto& i : result) // добиваем остатки result
     {
         if (!i.second.empty())
         {
             auto it = tmp_result.find(v_to_cl[i.first]);
-            it->second.splice(it->second.end(), i.second);
+            if (it != tmp_result.end())
+                it->second.splice(it->second.end(), i.second);
+            else
+                tmp_result.insert(std::move(i));
         }
     }
-    v_to_cl.clear();
-    clusters.clear();
     result = std::move(tmp_result);
     temp_graph = std::move(meta_gr);
 }
@@ -222,18 +225,16 @@ bool clusterisator::next_iteration()
     do {
         contin = false;
         for (auto it = temp_graph.begin(); it !=
-             temp_graph.end(); ++it)
+            temp_graph.end(); ++it)
         {
             contin = (move_anywhere(it) || contin);
         }
     } while (contin);
-    if (clusters.size() == 1)
-    {
-        v_to_cl.clear();
-        temp_graph.clear();
-        clusters.clear();
-        return false;
-    }
-    meta_graph();
-    return true;
+
+    bool ret = (clusters.size() > 1);
+    if (ret)
+        meta_graph();
+    v_to_cl.clear();
+    clusters.clear();
+    return ret;
 }

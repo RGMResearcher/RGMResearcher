@@ -27,15 +27,15 @@ private:
     std::map<unsigned, unsigned> v_to_cl;
     graph temp_graph;
     std::map<unsigned, cluster> clusters; // номер кластера на кластер
-    std::unordered_map<unsigned, std::list<unsigned>> result; // номер кластера на список верщин в нём
+    std::map<unsigned, std::list<unsigned>> result; // номер кластера на список верщин в нём
 
     // Удаление вершины из кластера
     void erase_from_cl(std::map<unsigned, cluster>::iterator&,
-                       graph::iterator&);
+        graph::iterator&);
 
     // Удаление вершины из кластера
     void erase_from_cl(std::map<unsigned, cluster>::iterator& it,
-                       unsigned v_index)
+        unsigned v_index)
     {
         auto current = temp_graph.find(v_index);
         if (current != temp_graph.end())
@@ -46,7 +46,7 @@ private:
     // aij_sum_delt - кол. рёбер между вставляемой вершиной и
     // элементами кластера cl
     void add_to_cl(const std::map<unsigned, cluster>::iterator& cl,
-                     const graph::iterator& it, unsigned aij_sum_delt)
+        const graph::iterator& it, unsigned aij_sum_delt)
     {
         v_to_cl.insert({ it->first, cl->first });
         cl->second.g.insert(it->first);
@@ -58,7 +58,7 @@ private:
     // aij_sum_delt - кол. рёбер между вставляемой вершиной и
     // элементами кластера cl
     void add_to_cl(std::map<unsigned, cluster>::iterator& cl,
-                     unsigned v_index, unsigned aij_sum_delt)
+        unsigned v_index, unsigned aij_sum_delt)
     {
         add_to_cl(cl, temp_graph.find(v_index), aij_sum_delt);
     }
@@ -66,7 +66,7 @@ private:
     // Объединение двух вершин в новый кластер.
     // Возвращает номер созданного кластера.
     unsigned make_cluster(const graph::iterator& first,
-                          const graph::iterator& second)
+        const graph::iterator& second)
     {
         unsigned ret = (clusters.empty()) ? 0 : (clusters.rbegin()->first + 1);
         auto it = clusters.insert({ ret, cluster() }).first;
@@ -87,7 +87,7 @@ private:
 
     void meta_graph();
     void _Init(std::map<unsigned, unsigned>&, std::map<unsigned,
-               unsigned>&, const std::unordered_map<unsigned, unsigned>&);
+        unsigned>&, const std::map<unsigned, unsigned>&);
     void _Init();
 
     // Возврат. знач. не является значением модулярность
@@ -102,17 +102,17 @@ private:
     double d_modular(const graph::iterator& it1, const graph::iterator& it2)
     {
         return ((4.0 * edge_count)*temp_graph.count(it1, it2) -
-                pow(it1->second.in_d + it1->second.out_d +
-                    it2->second.in_d + it2->second.out_d, 2));
+            pow(it1->second.in_d + it1->second.out_d +
+            it2->second.in_d + it2->second.out_d, 2));
     }
 
     // Возврат. знач. не является значением модулярность
     // Только для операций сравнения < > =
     double d_modular(const graph::iterator& it, const cluster& cl,
-                     unsigned aij_temp)
+        unsigned aij_temp)
     {
         return ((4.0 * edge_count)*(cl.aij_sum + aij_temp) -
-                pow(cl.di_sum + it->second.in_d + it->second.out_d, 2));
+            pow(cl.di_sum + it->second.in_d + it->second.out_d, 2));
     }
 
     bool move_anywhere(graph::iterator&);
@@ -138,10 +138,10 @@ public:
 
     bool next_iteration();
 
-    std::unordered_map<unsigned, std::list<unsigned>> const&
-    temp_result() const
+    std::pair<std::map<unsigned, std::list<unsigned>> const&, graph const&>
+        temp_result() const
     {
-        return result;
+        return std::make_pair(result, temp_graph);
     }
 
     virtual ~clusterisator(){}

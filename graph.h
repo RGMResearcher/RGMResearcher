@@ -2,7 +2,7 @@
 #ifndef _GRAPH_H_
 #define _GRAPH_H_
 
-#include <unordered_map>
+#include <map>
 #include <ostream>
 #include <functional>
 
@@ -16,11 +16,11 @@ public:
     // Количество петель
     loop;
     // Входящие рёбра
-    std::unordered_map<unsigned, unsigned> input,
+    std::map<unsigned, unsigned> input,
     // Исходящие рёбра
     output;
 
-    typedef std::unordered_map<unsigned, unsigned>::iterator iterator;
+    typedef std::map<unsigned, unsigned>::iterator iterator;
 
     vertex() : in_d(0), out_d(0), loop(0){}
     vertex(const vertex& lnk) :input(lnk.input),
@@ -35,9 +35,9 @@ class graph
 {
 private:
     unsigned m; // Число рёбер
-    mutable std::unordered_map<unsigned, vertex> v;
+    mutable std::map<unsigned, vertex> v;
 public:
-    typedef std::unordered_map<unsigned, vertex>::iterator iterator;
+    typedef std::map<unsigned, vertex>::iterator iterator;
 
     graph() :m(0){}
     graph(const graph& gr) :v(gr.v), m(gr.m){}
