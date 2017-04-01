@@ -221,6 +221,7 @@ void clusterisator::meta_graph()
 
 bool clusterisator::next_iteration()
 {
+    clusters.clear();
     bool contin;
     do {
         contin = false;
@@ -235,6 +236,5 @@ bool clusterisator::next_iteration()
     if (ret)
         meta_graph();
     v_to_cl.clear();
-    clusters.clear();
     return ret;
 }

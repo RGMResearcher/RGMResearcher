@@ -10,18 +10,32 @@
 #include <math.h>
 #include "graph.h"
 
+struct cluster
+{
+public:
+    unsigned long long di_sum;
+    unsigned aij_sum;
+    std::set<unsigned> g;
+
+    cluster() :di_sum(0), aij_sum(0){}
+};
+
+struct result_clusterisation
+{
+    // Сруктура связей метаграфа
+    graph const& connections;
+    // Структура объединения(для дендограммы)
+    std::map<unsigned, cluster> const& clusters;
+    // Состав вешин в каждом кластере
+    std::map<unsigned, std::list<unsigned>> const& vertexes;
+
+    result_clusterisation(graph const& gr, std::map<unsigned,
+        cluster> const& cl, std::map<unsigned, std::list<unsigned>> const& temp_result):
+        connections(gr), clusters(cl), vertexes(temp_result){}
+};
+
 class clusterisator
 {
-    struct cluster
-    {
-    public:
-        unsigned long long di_sum;
-        unsigned aij_sum;
-        std::set<unsigned> g;
-
-        cluster() :di_sum(0), aij_sum(0){}
-    };
-
 private:
     unsigned edge_count;
     std::map<unsigned, unsigned> v_to_cl;
@@ -138,10 +152,9 @@ public:
 
     bool next_iteration();
 
-    std::pair<std::map<unsigned, std::list<unsigned>> const&, graph const&>
-        temp_result() const
+    result_clusterisation temp_result() const
     {
-        return std::make_pair(result, temp_graph);
+        return result_clusterisation(temp_graph, clusters, result);
     }
 
     virtual ~clusterisator(){}
