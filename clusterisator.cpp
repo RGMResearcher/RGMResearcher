@@ -4,7 +4,7 @@ const std::function<void()> default_distribution([](){});
 
 // Удаление вершины current из кластера it
 void clusterisator::erase_from_cl(std::map<unsigned, cluster>::
-    iterator& it, graph::iterator& current)
+                                  iterator& it, graph::iterator& current)
 {
     it->second.g.erase(current->first);
     v_to_cl.erase(current->first);
@@ -17,7 +17,7 @@ void clusterisator::erase_from_cl(std::map<unsigned, cluster>::
     // пересчёт параметров
     unsigned aij_temp = 0;
     if (it->second.g.size() < current->second.in_d +
-        current->second.out_d)
+            current->second.out_d)
     {
         for (auto& i : it->second.g)
         {
@@ -51,8 +51,8 @@ void clusterisator::erase_from_cl(std::map<unsigned, cluster>::
 // иннициализация cl(смежные кластеры) и no_cl(смежные вершины,
 // не лежащие в кластере)
 void clusterisator::_Init(std::map<unsigned, unsigned>& cl,
-    std::map<unsigned, unsigned>& no_cl, const std::map<
-    unsigned, unsigned>& graph_v)
+                          std::map<unsigned, unsigned>& no_cl, const std::map<
+                          unsigned, unsigned>& graph_v)
 {
     for (auto& i : graph_v)
     {
@@ -80,13 +80,13 @@ void clusterisator::_Init()
 {
     edge_count = temp_graph.edge_count();
     for (auto& i : temp_graph)
-        result.insert({ i.first, { i.first } });
+        temp_result.insert({ i.first, { i.first } });
     // первичное распределение
 }
 
 // Перемещает вершину it туда, куда нужно
 // Возвращает true, если перемещение произошло
-bool clusterisator::move_anywhere(graph::iterator& it)
+bool clusterisator::move_anywhere(graph::iterator& it, const double& e_factor)
 {
     /*
     пройтись по смежным вершинам
@@ -112,13 +112,13 @@ bool clusterisator::move_anywhere(graph::iterator& it)
     if (flag == 1)
     {
         it1 = no_cl.begin();
-        max = { d_modular(it, temp_graph.find(it1->first)), it1->first };
+        max = { d_modular(it, temp_graph.find(it1->first), e_factor), it1->first };
         // d_mod на номер вершины
 
         for (++it1; it1 != no_cl.end(); ++it1)
         {
             std::pair<double, unsigned> ifmax = {
-                d_modular(it, temp_graph.find(it1->first)), it1->first
+                d_modular(it, temp_graph.find(it1->first), e_factor), it1->first
             };
             if (ifmax > max)
                 max = ifmax;
@@ -130,15 +130,15 @@ bool clusterisator::move_anywhere(graph::iterator& it)
         it1 = cl.begin();
         if (flag == 0)
         {
-            max = { d_modular(it,
-                clusters[it1->first], it1->second), it1->first };
+            max = { d_modular(it, clusters[it1->first],
+                    it1->second, e_factor), it1->first };
             ++it1;
             flag = 2;
         }
         for (; it1 != cl.end(); ++it1)
         {
             std::pair<double, unsigned> tmp = { d_modular(it,
-                clusters[it1->first], it1->second), it1->first };
+                                                clusters[it1->first], it1->second, e_factor), it1->first };
             if (tmp > max)
             {
                 flag = 2;
@@ -152,7 +152,7 @@ bool clusterisator::move_anywhere(graph::iterator& it)
     if (clcl != -1)
     {
         auto yhg = clusters.find(clcl);
-        if (d_modular(yhg->second) >= max.first)
+        if (d_modular(yhg->second, e_factor) >= max.first)
             return false;
         this->erase_from_cl(yhg, it);
     }
@@ -186,7 +186,7 @@ void clusterisator::meta_graph()
             if (out == fr)
             {
                 it->second.splice(it->second.end(),
-                    result[j.first]);
+                                  temp_result[j.first]);
             }
             else
             {
@@ -199,12 +199,12 @@ void clusterisator::meta_graph()
             if (out == fr)
             {
                 it->second.splice(it->second.end(),
-                    result[j.first]);
+                                  temp_result[j.first]);
             }
         }
     }
 
-    for (auto& i : result) // добиваем остатки result
+    for (auto& i : temp_result) // добиваем остатки result
     {
         if (!i.second.empty())
         {
@@ -215,20 +215,20 @@ void clusterisator::meta_graph()
                 tmp_result.insert(std::move(i));
         }
     }
-    result = std::move(tmp_result);
+    temp_result = std::move(tmp_result);
     temp_graph = std::move(meta_gr);
 }
 
-bool clusterisator::next_iteration()
+bool clusterisator::next_iteration(const double& e_factor)
 {
     clusters.clear();
     bool contin;
     do {
         contin = false;
         for (auto it = temp_graph.begin(); it !=
-            temp_graph.end(); ++it)
+             temp_graph.end(); ++it)
         {
-            contin = (move_anywhere(it) || contin);
+            contin = (move_anywhere(it, e_factor) || contin);
         }
     } while (contin);
 

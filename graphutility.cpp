@@ -211,3 +211,429 @@ std::pair<graph, unsigned> clustered_graph(unsigned v_count, unsigned min_cl_siz
     }
     return ret;
 }
+
+void print(const result_clusterisation& result, std::ostream& out)
+{
+    out << result.clusters.size() << '\n';
+    auto it = result.vertexes.begin();
+    if (it != result.vertexes.end())
+    {
+        out << it->first << '(' << it->second.size() << ')';
+        for (++it; it != result.vertexes.end(); ++it)
+            out << ' ' << it->first << '(' << it->second.size() << ')';
+    }
+    out << '\n';
+    for (auto& i : result.vertexes)
+    {
+        for (auto& k : i.second)
+            out << k << '(' << i.first << ")\n";
+    }
+}
+
+void print(const result_clusterisation& result, const std::string& file,
+           double log_base = 1.5)
+{
+    std::ofstream fout(file);
+    fout << "graph result {\n";
+    fout << "\tnode [shape = circle];\n";
+    for (auto& i : result.vertexes)
+    {
+        double size = (i.second.size() > 1) ?
+                    (log(i.second.size()) / log(log_base)) : 1.0;
+        fout << '\t' << i.first << " [ label = \"" << i.second.size() <<
+                "\", height = " << size << ", width = " << size << " ];\n";
+    }
+    for (auto& i : result.connections)
+    {
+        for (auto& k : i.second.output)
+        {
+            for (unsigned n = 0; n < k.second; ++n)
+                fout << '\t' << i.first << " -- " << k.first << ";\n";
+        }
+    }
+    fout << '}';
+    fout.close();
+}
+
+unsigned clustered()
+{
+    graph gr;
+    //clusterisator ob;
+    std::string str;
+    std::pair<unsigned, unsigned> p;
+    std::ifstream fin("buddahs.gv");
+    while (getline(fin, str))
+    {
+        unsigned pos = str.find(" -- ");
+        std::string tmp_str = str.substr(0, pos);
+        p.first = atoi(tmp_str.c_str());
+        tmp_str = str.substr(pos + 4, str.size() - pos - 4);
+        p.second = atoi(tmp_str.c_str());
+        gr.new_vertex(p.first);
+        gr.new_vertex(p.second);
+        gr.connect(p.first, p.second);
+    }
+    fin.close();
+    /*ob.init(gr);
+    for (unsigned i = 0; ob.next_iteration(); ++i)
+    {
+        std::string name = "result" + std::to_string(i) + ".gv";
+        to_gv(ob.result(), name);
+    }*/
+    std::ofstream f("out.txt");
+    f << triangls(gr).first;
+
+    f.close();
+    return 0;
+}
+
+std::pair<unsigned, double> triangls(const graph& gr)
+{
+    unsigned trgl = 0;
+    for (auto& i : gr)
+    {
+        for (auto k = i.second.input.upper_bound(i.first);
+             k != i.second.input.end(); ++k)
+        {
+            auto it = gr.find(k->first);
+            if (i.second.input.size() < it->second.input.size())
+            {
+                for (auto l = i.second.input.upper_bound(k->first);
+                     l != i.second.input.end(); ++l)
+                {
+                    auto it_2 = it->second.input.find(l->first);
+                    if (it_2 != it->second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.input.upper_bound(k->first);
+                     l != it->second.input.end(); ++l)
+                {
+                    auto it_2 = i.second.input.find(l->first);
+                    if (it_2 != i.second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+
+            if (i.second.output.size() < it->second.input.size())
+            {
+                for (auto l = i.second.output.upper_bound(k->first);
+                     l != i.second.output.end(); ++l)
+                {
+                    auto it_2 = it->second.input.find(l->first);
+                    if (it_2 != it->second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.input.upper_bound(k->first);
+                     l != it->second.input.end(); ++l)
+                {
+                    auto it_2 = i.second.output.find(l->first);
+                    if (it_2 != i.second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+
+            if (i.second.input.size() < it->second.output.size())
+            {
+                for (auto l = i.second.input.upper_bound(k->first);
+                     l != i.second.input.end(); ++l)
+                {
+                    auto it_2 = it->second.output.find(l->first);
+                    if (it_2 != it->second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.output.upper_bound(k->first);
+                     l != it->second.output.end(); ++l)
+                {
+                    auto it_2 = i.second.input.find(l->first);
+                    if (it_2 != i.second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+
+            if (i.second.output.size() < it->second.output.size())
+            {
+                for (auto l = i.second.output.upper_bound(k->first);
+                     l != i.second.output.end(); ++l)
+                {
+                    auto it_2 = it->second.output.find(l->first);
+                    if (it_2 != it->second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.output.upper_bound(k->first);
+                     l != it->second.output.end(); ++l)
+                {
+                    auto it_2 = i.second.output.find(l->first);
+                    if (it_2 != i.second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+        }
+
+        for (auto k = i.second.output.upper_bound(i.first);
+             k != i.second.output.end(); ++k)
+        {
+            auto it = gr.find(k->first);
+            if (i.second.input.size() < it->second.input.size())
+            {
+                for (auto l = i.second.input.upper_bound(k->first);
+                     l != i.second.input.end(); ++l)
+                {
+                    auto it_2 = it->second.input.find(l->first);
+                    if (it_2 != it->second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.input.upper_bound(k->first);
+                     l != it->second.input.end(); ++l)
+                {
+                    auto it_2 = i.second.input.find(l->first);
+                    if (it_2 != i.second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+
+            if (i.second.output.size() < it->second.input.size())
+            {
+                for (auto l = i.second.output.upper_bound(k->first);
+                     l != i.second.output.end(); ++l)
+                {
+                    auto it_2 = it->second.input.find(l->first);
+                    if (it_2 != it->second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.input.upper_bound(k->first);
+                     l != it->second.input.end(); ++l)
+                {
+                    auto it_2 = i.second.output.find(l->first);
+                    if (it_2 != i.second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+
+            if (i.second.input.size() < it->second.output.size())
+            {
+                for (auto l = i.second.input.upper_bound(k->first);
+                     l != i.second.input.end(); ++l)
+                {
+                    auto it_2 = it->second.output.find(l->first);
+                    if (it_2 != it->second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.output.upper_bound(k->first);
+                     l != it->second.output.end(); ++l)
+                {
+                    auto it_2 = i.second.input.find(l->first);
+                    if (it_2 != i.second.input.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+
+            if (i.second.output.size() < it->second.output.size())
+            {
+                for (auto l = i.second.output.upper_bound(k->first);
+                     l != i.second.output.end(); ++l)
+                {
+                    auto it_2 = it->second.output.find(l->first);
+                    if (it_2 != it->second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+            else
+            {
+                for (auto l = it->second.output.upper_bound(k->first);
+                     l != it->second.output.end(); ++l)
+                {
+                    auto it_2 = i.second.output.find(l->first);
+                    if (it_2 != i.second.output.end())
+                        trgl += k->second * l->second * it_2->second;
+                }
+            }
+        }
+    }
+    std::pair<unsigned, double> ret(trgl, 0.0);
+    ret.second = (((gr.edge_count() - 1)*gr.edge_count()*
+                   (gr.edge_count() + 1)) / 48.0) * std::pow(log(gr.size()), 3.0);
+    return ret;
+}
+
+graph cl_to_gr(const cluster& cl, const graph& parrent_graph)
+{
+    graph ret;
+    for (auto& i : cl.g)
+    {
+        ret.new_vertex(i);
+    }
+    for (auto it = ret.begin(); it != ret.end(); ++it)
+    {
+        auto it0 = parrent_graph.find(it->first); // вершина с тем же индексом, но в parrent_graph
+        ret.connect(it, it, it0->second.loop);
+        for (auto& k : it0->second.output)
+        {
+            auto it1 = ret.find(k.first);
+            if (it1 != ret.end())
+                ret.connect(it, it1, k.second);
+        }
+    }
+    return ret;
+}
+
+void print(const graph& gr, std::ostream& os)
+{
+    os << "graph gr {\n";
+    for (auto& v : gr)
+    {
+        for (auto& i : v.second.output)
+        {
+            for (unsigned k = 0; k < i.second; ++k)
+                os << v.first << " -- " << i.first << std::endl;
+        }
+    }
+    os << '}';
+}
+
+bool compare(const std::pair<unsigned, unsigned>& i,
+             const std::pair<unsigned, unsigned>& j)
+{
+    return (i > j);
+}
+
+void print(const result_clusterisation& result, const std::string& file,
+           double log_base)
+{
+    std::ofstream fout(file);
+    fout << "graph result {\n";
+    fout << "\tnode [shape = circle];\n";
+    std::vector<std::pair<unsigned, unsigned>> v; // размер номер
+    /*for (auto& i : result.vertexes)
+    {
+    double size = (i.second.size() > 1) ?
+    (log(i.second.size()) / log(log_base)) : 1.0;
+    fout << '\t' << i.first << " [ label = \"" << i.second.size() <<
+    "\", height = " << size << ", width = " << size << " ];\n";
+    }*/
+    for (auto& i : result.vertexes)
+    {
+        v.push_back({ i.second.size(), i.first });
+    }
+    std::sort(v.begin(), v.end(), compare);
+    for (auto& i : v)
+    {
+        double size = (i.first > 1) ?
+                    (log(i.first) / log(log_base)) : 1.0;
+        fout << '\t' << i.second << " [ label = \"" << i.first <<
+                "\", height = " << size << ", width = " << size << " ];\n";
+    }
+    for (auto& i : result.connections)
+    {
+        for (auto& k : i.second.output)
+        {
+            for (unsigned n = 0; n < k.second; ++n)
+                fout << '\t' << i.first << " -- " << k.first << "\n";
+        }
+    }
+    fout << '}';
+    fout.close();
+}
+
+void print(const result_clusterisation& result, std::ostream& out,
+           double log_base)
+{
+    out << "digraph result {\n";
+    out << "\tnode [shape = circle];\n";
+    std::vector<std::pair<unsigned, unsigned>> v; // размер номер
+    /*for (auto& i : result.vertexes)
+    {
+    double size = (i.second.size() > 1) ?
+    (log(i.second.size()) / log(log_base)) : 1.0;
+    fout << '\t' << i.first << " [ label = \"" << i.second.size() <<
+    "\", height = " << size << ", width = " << size << " ];\n";
+    }*/
+    for (auto& i : result.vertexes)
+    {
+        v.push_back({ i.second.size(), i.first });
+    }
+    std::sort(v.begin(), v.end(), compare);
+    for (auto& i : v)
+    {
+        double size = (i.first > 1) ?
+                    (log(i.first) / log(log_base)) : 1.0;
+        out << '\t' << i.second << " [ label = \"" << i.second << '/' << i.first <<
+               "\", height = " << size << ", width = " << size << " ];\n";
+    }
+    for (auto& i : result.connections)
+    {
+        for (auto& k : i.second.output)
+        {
+            out << '\t' << i.first << " -> " << k.first <<
+                   " [ label = \"" << k.second << "\" ];\n";
+        }
+    }
+    out << '}';
+}
+
+void cl_elements(const result_clusterisation& result, std::ostream& out)
+{
+    out << result.clusters.size() << '\n';
+    auto it = result.vertexes.begin();
+    if (it != result.vertexes.end())
+    {
+        out << it->first << '(' << it->second.size() << ')';
+        for (++it; it != result.vertexes.end(); ++it)
+            out << ' ' << it->first << '(' << it->second.size() << ')';
+    }
+    out << '\n';
+    for (auto& i : result.vertexes)
+    {
+        for (auto& k : i.second)
+            out << k << '(' << i.first << ")\n";
+    }
+}
+
+double cl_coef(const graph::iterator& it)
+{
+    double n = 2.0;
+
+    unsigned k = it->second.in_d + it->second.out_d;
+    return 2 * n / (k * (k - 1));
+}
+
+double assort(const graph& gr)
+{
+    double l = gr.edge_count(); // граф ориентированный
+    double f_sum = 0, d_sum = 0, d_sqr = 0, f_sqr = 0, df_sum = 0;
+    for (auto& i : gr)
+    {
+        for (auto& k : i.second.output)
+        {
+            auto it = gr.find(k.first);
+            d_sum += i.second.out_d*k.second;
+            f_sum += it->second.in_d*k.second;
+            d_sqr += (i.second.out_d * i.second.out_d)*k.second;
+            f_sqr += (it->second.in_d * it->second.in_d)*k.second;
+            df_sum += (i.second.out_d * it->second.in_d)*k.second;
+        }
+    }
+    double num = l * df_sum - d_sum*f_sum;
+    double denum = sqrt((l*d_sqr - d_sum*d_sum)*(l*f_sqr - f_sum*f_sum));
+    return num / denum;
+}

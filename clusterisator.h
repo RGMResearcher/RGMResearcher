@@ -30,7 +30,7 @@ struct result_clusterisation
     std::map<unsigned, std::list<unsigned>> const& vertexes;
 
     result_clusterisation(graph const& gr, std::map<unsigned,
-        cluster> const& cl, std::map<unsigned, std::list<unsigned>> const& temp_result):
+                          cluster> const& cl, std::map<unsigned, std::list<unsigned>> const& temp_result):
         connections(gr), clusters(cl), vertexes(temp_result){}
 };
 
@@ -41,15 +41,15 @@ private:
     std::map<unsigned, unsigned> v_to_cl;
     graph temp_graph;
     std::map<unsigned, cluster> clusters; // номер кластера на кластер
-    std::map<unsigned, std::list<unsigned>> result; // номер кластера на список верщин в нём
+    std::map<unsigned, std::list<unsigned>> temp_result; // номер кластера на список верщин в нём
 
     // Удаление вершины из кластера
     void erase_from_cl(std::map<unsigned, cluster>::iterator&,
-        graph::iterator&);
+                       graph::iterator&);
 
     // Удаление вершины из кластера
     void erase_from_cl(std::map<unsigned, cluster>::iterator& it,
-        unsigned v_index)
+                       unsigned v_index)
     {
         auto current = temp_graph.find(v_index);
         if (current != temp_graph.end())
@@ -60,7 +60,7 @@ private:
     // aij_sum_delt - кол. рёбер между вставляемой вершиной и
     // элементами кластера cl
     void add_to_cl(const std::map<unsigned, cluster>::iterator& cl,
-        const graph::iterator& it, unsigned aij_sum_delt)
+                   const graph::iterator& it, unsigned aij_sum_delt)
     {
         v_to_cl.insert({ it->first, cl->first });
         cl->second.g.insert(it->first);
@@ -72,7 +72,7 @@ private:
     // aij_sum_delt - кол. рёбер между вставляемой вершиной и
     // элементами кластера cl
     void add_to_cl(std::map<unsigned, cluster>::iterator& cl,
-        unsigned v_index, unsigned aij_sum_delt)
+                   unsigned v_index, unsigned aij_sum_delt)
     {
         add_to_cl(cl, temp_graph.find(v_index), aij_sum_delt);
     }
@@ -80,14 +80,14 @@ private:
     // Объединение двух вершин в новый кластер.
     // Возвращает номер созданного кластера.
     unsigned make_cluster(const graph::iterator& first,
-        const graph::iterator& second)
+                          const graph::iterator& second)
     {
         unsigned ret = (clusters.empty()) ? 0 : (clusters.rbegin()->first + 1);
         auto it = clusters.insert({ ret, cluster() }).first;
         add_to_cl(it, first->first, temp_graph.count(second->first,
-            first->first));
+                                                     first->first));
         add_to_cl(it, second->first, temp_graph.count(first->first,
-            second->first));
+                                                      second->first));
         return ret;
     }
 
@@ -96,40 +96,41 @@ private:
     unsigned make_cluster(unsigned v_first, unsigned v_second)
     {
         return this->make_cluster(temp_graph.find(v_first),
-            temp_graph.find(v_second));
+                                  temp_graph.find(v_second));
     }
 
     void meta_graph();
     void _Init(std::map<unsigned, unsigned>&, std::map<unsigned,
-        unsigned>&, const std::map<unsigned, unsigned>&);
+               unsigned>&, const std::map<unsigned, unsigned>&);
     void _Init();
 
     // Возврат. знач. не является значением модулярность
     // Только для операций сравнения < > =
-    double d_modular(const cluster& cl)
+    double d_modular(const cluster& cl, const double& e_factor = 4.0)
     {
-        return ((4.0 * edge_count)*cl.aij_sum - (cl.di_sum*cl.di_sum));
+        return ((e_factor * edge_count)*cl.aij_sum - (cl.di_sum*cl.di_sum));
     }
 
     // Возврат. знач. не является значением модулярность
     // Только для операций сравнения < > =
-    double d_modular(const graph::iterator& it1, const graph::iterator& it2)
+    double d_modular(const graph::iterator& it1, const graph::iterator& it2,
+                     const double& e_factor = 4.0)
     {
-        return ((4.0 * edge_count)*temp_graph.count(it1, it2) -
-            pow(it1->second.in_d + it1->second.out_d +
-            it2->second.in_d + it2->second.out_d, 2));
+        return ((e_factor * edge_count)*temp_graph.count(it1, it2) -
+                pow(it1->second.in_d + it1->second.out_d +
+                    it2->second.in_d + it2->second.out_d, 2));
     }
 
     // Возврат. знач. не является значением модулярность
     // Только для операций сравнения < > =
     double d_modular(const graph::iterator& it, const cluster& cl,
-        unsigned aij_temp)
+                     unsigned aij_temp, const double& e_factor = 4.0)
     {
-        return ((4.0 * edge_count)*(cl.aij_sum + aij_temp) -
-            pow(cl.di_sum + it->second.in_d + it->second.out_d, 2));
+        return ((e_factor * edge_count)*(cl.aij_sum + aij_temp) -
+                pow(cl.di_sum + it->second.in_d + it->second.out_d, 2));
     }
 
-    bool move_anywhere(graph::iterator&);
+    bool move_anywhere(graph::iterator&, const double &e_factor = 4.0);
 
 public:
     typedef std::function<void()> distributor;
@@ -150,11 +151,11 @@ public:
     // первичное разбиение на кластеры
     void first_partition() {}
 
-    bool next_iteration();
+    bool next_iteration(const double &e_factor = 4.0);
 
-    result_clusterisation temp_result() const
+    result_clusterisation result() const
     {
-        return result_clusterisation(temp_graph, clusters, result);
+        return result_clusterisation(temp_graph, clusters, temp_result);
     }
 
     virtual ~clusterisator(){}
