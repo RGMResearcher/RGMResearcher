@@ -58,6 +58,6 @@ void print(const result_clusterisation& result, std::ostream&,
 void cl_elements(const result_clusterisation&, std::ostream&);
 double cl_coef(const graph::iterator&);
 double assort(const graph&);
-
+std::map<unsigned, unsigned> diameter(const graph&);
 
 #endif // _GRAPHUTILITY_H_
