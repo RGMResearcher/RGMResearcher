@@ -641,51 +641,49 @@ double assort(const graph& gr)
 std::map<unsigned, unsigned> diameter(const graph& gr)
 {
     std::map<unsigned, unsigned> ret; // длина на количество путей такой длины
-    for (auto& i : gr)
-    {
-        std::cout << i.first << std::endl;
-        std::set<unsigned> used; // пройденные вершины
-        std::vector<std::set<unsigned>> id(1);
-        used.insert(i.first);
-        id.back().insert(i.first);
-        used.insert(i.first);
-        unsigned p;
-        for (unsigned index = 0;; ++index)
+        for (auto& i : gr)
         {
-            id.push_back(std::set<unsigned>());
-            for (auto& it : id[index])
+            std::cout << i.first << std::endl;
+            std::set<unsigned> used; // пройденные вершины
+            used.insert(i.first);
+            std::vector<std::set<unsigned>> id(1);
+            id.back().insert(i.first);
+            for (unsigned index = 0;; ++index)
             {
-                auto it1 = gr.find(it);
-                for (auto it2 = it1->second.output.upper_bound(it1->first);
-                    it2 != it1->second.output.end(); ++it2)
+                id.push_back(std::set<unsigned>());
+                for (auto& it : id[index])
                 {
-                    if (used.find(it2->first) == used.end())
+                    auto it1 = gr.find(it);
+                    for (auto it2 = it1->second.output.upper_bound(it1->first);
+                        it2 != it1->second.output.end(); ++it2)
                     {
-                        id[index + 1].insert(it2->first);
-                        used.insert(it2->first);
+                        if (used.find(it2->first) == used.end())
+                        {
+                            id[index + 1].insert(it2->first);
+                            used.insert(it2->first);
+                        }
+                    }
+                    for (auto it2 = it1->second.input.upper_bound(it1->first);
+                        it2 != it1->second.input.end(); ++it2)
+                    {
+                        if (used.find(it2->first) == used.end())
+                        {
+                            id[index + 1].insert(it2->first);
+                            used.insert(it2->first);
+                        }
                     }
                 }
-                for (auto it2 = it1->second.input.upper_bound(it1->first);
-                    it2 != it1->second.input.end(); ++it2)
-                {
-                    if (used.find(it2->first) == used.end())
-                    {
-                        id[index + 1].insert(it2->first);
-                        used.insert(it2->first);
-                    }
-                }
+                if (id[index + 1].empty())
+                    break;
             }
-            if (id[index + 1].empty())
-                break;
+            for (unsigned i = 1; i + 1 < id.size(); ++i)
+            {
+                auto it = ret.find(i);
+                if (it != ret.end())
+                    it->second += id[i].size();
+                else
+                    ret.insert({ i, id[i].size() });
+            }
         }
-        for (unsigned i = 1; i + 1 < id.size(); ++i)
-        {
-            auto it = ret.find(i);
-            if (it != ret.end())
-                it->second += id[i].size();
-            else
-                ret.insert({ i, id[i].size() });
-        }
-    }
-    return ret;
+        return ret;
 }
