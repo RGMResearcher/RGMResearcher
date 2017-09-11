@@ -1,75 +1,80 @@
 ﻿#include "graph.h"
 
-// Установка n связей first --> second
-void graph::connect(unsigned first, unsigned second, unsigned n)
+void graph::erase(const std::pair<unsigned, unsigned>& p)
 {
-    auto it_f = v.find(first);
-    auto it_s = v.find(second);
-    if (it_f != v.end() && it_s != v.end())
-        connect(it_f, it_s, n);
-}
-
-// Удаление n рёбер first --> second
-// Если рёбер меньше, чем n - они удалятся все
-// Возвращает количество удалённых рёбер
-unsigned graph::disconnect(unsigned first, unsigned second,
-                           unsigned n = 1, bool ndel)
-{
-    auto it_f = v.find(first);
-    auto it_s = v.find(second);
-    if (it_f != v.end() && it_s != v.end())
-        return disconnect(it_f, it_s, n, ndel);
-    else
-        return 0;
+    for (auto& i : v[p.second].input)
+        this->disconnect_by_index(p.second, i.first, i.second);
+    for (auto& i : v[p.second].output)
+        this->disconnect_by_index(i.first, p.second, i.second);
+    v[p.second] = std::move(vertex());
+    m -= v[p.second].loop;
+    deleted.push(p.second);
+    reindex.erase(p.first);
 }
 
 // Установка n рёбер it_f --> it_s
-void graph::connect(const graph::iterator& it_f,
-                    const graph::iterator& it_s, unsigned n)
+void graph::connect_by_index(unsigned it_f,
+    unsigned it_s, graph_vertex_count_type n)
 {
-    if (it_f->first == it_s->first)
+    if (it_f == it_s)
     {
-        it_f->second.loop += n;
-    }
-    else if (it_f->second.output.find(it_s->first) ==
-             it_f->second.output.end())
-    {
-        it_f->second.output.insert({ it_s->first, n });
-        it_s->second.input.insert({ it_f->first, n });
+        v[it_f].loop += n;
     }
     else
     {
-        it_f->second.output[it_s->first] += n;
-        it_s->second.input[it_f->first] += n;
+        auto it = v[it_f].output.find(it_s);
+        if (it == v[it_f].output.end())
+        {
+            v[it_f].output.insert({ it_s, n });
+            v[it_s].input.insert({ it_f, n });
+        }
+        else
+        {
+            it->second += n;
+            v[it_s].input[it_f] += n;
+        }
     }
-    it_f->second.out_d += n;
-    it_s->second.in_d += n;
+    v[it_f].out_d += n;
+    v[it_s].in_d += n;
     m += n;
+}
+
+graph_vertex_count_type graph::count_by_name(unsigned first, unsigned second) const
+{
+    auto it_f = this->find(first);
+    if (it_f == this->end())
+        return 0;
+    if (first == second)
+        return this->count(it_f, it_f);
+    auto it_s = this->find(second);
+    if (it_s != this->end())
+        return this->count(it_f, it_s);
+    return 0;
 }
 
 // Удаление n рёбер it_f --> it_s
 // Если рёбер меньше, чем n - они удалятся все
 // Возвращает количество удалённых рёбер
-unsigned graph::disconnect(const graph::iterator& it_f,
-                           const graph::iterator& it_s, unsigned n = 1, bool ndel)
+graph_vertex_count_type graph::disconnect_by_index(unsigned it_f,
+    unsigned it_s, graph_vertex_count_type n = 1, bool ndel)
 {
-    unsigned ret = n;
-    if (it_f->first == it_s->first)
+    graph_vertex_count_type ret = n;
+    if (it_f == it_s)
     {
-        if (it_f->second.loop > n)
-            it_f->second.loop -= n;
+        if (v[it_f].loop > n)
+            v[it_f].loop -= n;
         else
         {
-            ret = it_f->second.loop;
-            it_f->second.loop = 0;
+            ret = v[it_f].loop;
+            v[it_f].loop = 0;
         }
     }
     else
     {
-        auto it_fs = it_f->second.output.find(it_s->first);
-        if (it_fs == it_f->second.output.end())
+        auto it_fs = v[it_f].output.find(it_s);
+        if (it_fs == v[it_f].output.end())
             return 0;
-        auto it_sf = it_s->second.input.find(it_f->first);
+        auto it_sf = v[it_s].input.find(it_f);
         if (it_fs->second > n)
         {
             it_fs->second -= n;
@@ -80,8 +85,8 @@ unsigned graph::disconnect(const graph::iterator& it_f,
             ret = it_fs->second;
             if (ndel)
             {
-                it_s->second.input.erase(it_sf);
-                it_f->second.output.erase(it_fs);
+                v[it_s].input.erase(it_sf);
+                v[it_f].output.erase(it_fs);
             }
             else
             {
@@ -90,79 +95,70 @@ unsigned graph::disconnect(const graph::iterator& it_f,
             }
         }
     }
-    it_f->second.out_d -= ret;
-    it_s->second.in_d -= ret;
+    v[it_f].out_d -= ret;
+    v[it_s].in_d -= ret;
     m -= ret;
     return ret;
 }
 
-// Объединение двух вершин(second перехоит в first)
-void graph::merge(const graph::iterator& it_f,
-                  const graph::iterator& it_s, bool _Ndel = true)
+// Удаление n рёбер first --> second
+// Если рёбер меньше, чем n - они удалятся все
+// Возвращает количество удалённых рёбер
+graph_vertex_count_type graph::disconnect_by_name(unsigned first,
+    unsigned second, graph_vertex_count_type n, bool ndel)
 {
-    unsigned count = this->count(it_f, it_s);
-    if (count > 0)
+    auto it_f = this->find(first);
+    if (it_f != this->end())
     {
-        disconnect(it_f, it_s, count);
-        connect(it_f, it_f, count);
+        if (first == second)
+            return this->disconnect(it_f, it_f, n, ndel);
+        else
+        {
+            auto it_s = this->find(second);
+            if (it_s != this->end())
+                return this->disconnect(it_f, it_s, n, ndel);
+        }
     }
-    count = this->count(it_s, it_f);
-    if (count > 0)
-    {
-        disconnect(it_s, it_f, count);
-        connect(it_f, it_f, count);
-    }
-    count = this->count(it_s, it_s);
-    if (count > 0)
-    {
-        disconnect(it_s, it_s, count);
-        connect(it_f, it_f, count);
-    }
-    // пересадка рёбер
-    for (auto it = it_s->second.input.begin(); !it_s->second.input.empty();
-         it = it_s->second.input.begin())
-    {
-        auto it1 = v.find(it->first);
-        count = this->count(it1, it_s);
-        disconnect(it1, it_s, count);
-        connect(it1, it_f, count);
-    }
-    for (auto it = it_s->second.output.begin(); !it_s->second.output.empty();
-         it = it_s->second.output.begin())
-    {
-        auto it1 = v.find(it->first);
-        count = this->count(it_s, it1);
-        disconnect(it_s, it1, count);
-        connect(it_f, it1, count);
-    }
-    if (_Ndel)
-        v.erase(it_s);
+    return 0;
 }
 
 // Объединение двух вершин(second перехоит в first)
-void graph::merge(unsigned first, unsigned second, bool _Ndel)
+void graph::merge(const std::pair<unsigned, unsigned>& it_f,
+    const std::pair<unsigned, unsigned>& it_s)
 {
-    auto it_f = v.find(first);
-    auto it_s = v.find(second);
-    if (it_f != v.end() && it_s != v.end())
-        merge(it_f, it_s, _Ndel);
+    graph_vertex_count_type count = this->count_by_index(it_f.second, it_s.second);
+    if (count > 0)
+    {
+        disconnect_by_index(it_f.second, it_s.second, count);
+        connect_by_index(it_f.second, it_f.second, count);
+    }
+    count = this->count_by_index(it_s.second, it_f.second);
+    if (count > 0)
+    {
+        disconnect_by_index(it_s.second, it_f.second, count);
+        connect_by_index(it_f.second, it_f.second, count);
+    }
+    count = this->count_by_index(it_s.second, it_s.second);
+    if (count > 0)
+    {
+        disconnect_by_index(it_s.second, it_s.second, count);
+        connect_by_index(it_f.second, it_f.second, count);
+    }
+    // пересадка рёбер
+    for (auto& i : v[it_s.second].input)
+        connect_by_index(i.first, it_f.second, i.second);
+    for (auto& i : v[it_s.second].output)
+        connect_by_index(it_f.second, i.first, i.second);
+    this->erase_by_index(it_s.second);
 }
+
 
 // Вывод графа в виде списка смежности
 std::ostream& operator<<(std::ostream& os, const graph& gr)
 {
     if (gr.size() == 0)
         return os;
-    auto it = gr.begin();
-    os << it->first;
-    for (++it; it != gr.end(); ++it)
-        os << std::ends << it->first;
-    for (auto it = gr.begin(); it != gr.end(); ++it)
-    {
-        for (auto i : it->second.output)
-            os << std::endl << it->first << std::ends <<
-                  i.first << std::ends << i.second;
-    }
+    throw(std::string("not worked"));
     return os;
 }
 
@@ -171,7 +167,8 @@ void erase_loops(graph& gr)
 {
     for (auto it = gr.begin(); it != gr.end(); ++it)
     {
-        unsigned count = gr.count(it, it);
-        gr.disconnect(it, it, count);
+        graph_vertex_count_type count = gr.count(it, it);
+        if (count > 0)
+            gr.disconnect(it, it, count);
     }
 }

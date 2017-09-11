@@ -35,7 +35,7 @@ void MainWindow::on_open_triggered()
             unsigned second = lst[1].toUInt();
             gr.new_vertex(first);
             gr.new_vertex(second);
-            gr.connect(first, second);
+            gr.connect_by_name(first, second);
         }
         file->close();
     }

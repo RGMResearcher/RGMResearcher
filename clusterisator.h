@@ -3,10 +3,8 @@
 #define _CLUSTERISATOR_H_
 
 #include <set>
-#include <map>
 #include <vector>
 #include <list>
-#include <memory>
 #include <math.h>
 #include "graph.h"
 
@@ -25,112 +23,141 @@ struct result_clusterisation
     // Сруктура связей метаграфа
     graph const& connections;
     // Структура объединения(для дендограммы)
-    std::map<unsigned, cluster> const& clusters;
+    std::vector<cluster> const& clusters;
     // Состав вешин в каждом кластере
-    std::map<unsigned, std::list<unsigned>> const& vertexes;
+    std::vector<std::list<unsigned>> const& vertexes;
 
-    result_clusterisation(graph const& gr, std::map<unsigned,
-                          cluster> const& cl, std::map<unsigned, std::list<unsigned>> const& temp_result):
+    result_clusterisation(graph const& gr, std::vector<cluster> const& cl,
+        std::vector<std::list<unsigned>> const& temp_result) :
         connections(gr), clusters(cl), vertexes(temp_result){}
 };
 
 class clusterisator
 {
 private:
-    unsigned edge_count;
-    std::map<unsigned, unsigned> v_to_cl;
-    graph temp_graph;
-    std::map<unsigned, cluster> clusters; // номер кластера на кластер
-    std::map<unsigned, std::list<unsigned>> temp_result; // номер кластера на список верщин в нём
+    unsigned edge_count; // первоначальное число рёбер(для модулярности)
+    std::vector<int> v_to_cl; // индекс вершины на индекс кластера
+    graph temp_graph; // Структора связей кластеров
+    std::vector<cluster> clusters; // номер кластера на кластер
+    std::vector<std::list<unsigned>> temp_result; // номер кластера на список верщин в нём
+    std::queue<unsigned> deleted; // номера удалённых кластеров
+
+    // переиндексирование кластеров(удаление пустых мест)
+    void reindex_deleted();
 
     // Удаление вершины из кластера
-    void erase_from_cl(std::map<unsigned, cluster>::iterator&,
-                       graph::iterator&);
-
-    // Удаление вершины из кластера
-    void erase_from_cl(std::map<unsigned, cluster>::iterator& it,
-                       unsigned v_index)
-    {
-        auto current = temp_graph.find(v_index);
-        if (current != temp_graph.end())
-            erase_from_cl(it, current);
-    }
+    void erase_from_cl(unsigned, unsigned);
 
     // Добавляет вершину it в кластер с итератором cl
     // aij_sum_delt - кол. рёбер между вставляемой вершиной и
     // элементами кластера cl
-    void add_to_cl(const std::map<unsigned, cluster>::iterator& cl,
-                   const graph::iterator& it, unsigned aij_sum_delt)
+    void add_to_cl(unsigned cl_index, unsigned gr_index, unsigned aij_sum_delt)
     {
-        v_to_cl.insert({ it->first, cl->first });
-        cl->second.g.insert(it->first);
-        cl->second.aij_sum += aij_sum_delt + it->second.loop;
-        cl->second.di_sum += it->second.in_d + it->second.out_d;
-    }
-
-    // Добавляет вершину v_index в кластер с итератором cl
-    // aij_sum_delt - кол. рёбер между вставляемой вершиной и
-    // элементами кластера cl
-    void add_to_cl(std::map<unsigned, cluster>::iterator& cl,
-                   unsigned v_index, unsigned aij_sum_delt)
-    {
-        add_to_cl(cl, temp_graph.find(v_index), aij_sum_delt);
+        v_to_cl[gr_index] = cl_index;
+        clusters[cl_index].g.insert(gr_index);
+        clusters[cl_index].aij_sum += aij_sum_delt + temp_graph[gr_index].loop;
+        clusters[cl_index].di_sum += temp_graph[gr_index].in_d +
+            temp_graph[gr_index].out_d;
     }
 
     // Объединение двух вершин в новый кластер.
     // Возвращает номер созданного кластера.
-    unsigned make_cluster(const graph::iterator& first,
-                          const graph::iterator& second)
+    unsigned make_cluster(unsigned gr_first, unsigned gr_second)
     {
-        unsigned ret = (clusters.empty()) ? 0 : (clusters.rbegin()->first + 1);
-        auto it = clusters.insert({ ret, cluster() }).first;
-        add_to_cl(it, first->first, temp_graph.count(second->first,
-                                                     first->first));
-        add_to_cl(it, second->first, temp_graph.count(first->first,
-                                                      second->first));
-        return ret;
-    }
-
-    // Объединение двух вершин в новый кластер.
-    // Возвращает номер созданного кластера.
-    unsigned make_cluster(unsigned v_first, unsigned v_second)
-    {
-        return this->make_cluster(temp_graph.find(v_first),
-                                  temp_graph.find(v_second));
+        unsigned index;
+        if (!deleted.empty())
+        {
+            index = deleted.front();
+            deleted.pop();
+        }
+        else
+        {
+            index = clusters.size();
+            clusters.push_back(cluster());
+        }
+        add_to_cl(index, gr_first, temp_graph.
+            count_by_index(gr_first, gr_second));
+        add_to_cl(index, gr_second, temp_graph.
+            count_by_index(gr_second, gr_first));
+        return index;
     }
 
     void meta_graph();
-    void _Init(std::map<unsigned, unsigned>&, std::map<unsigned,
-               unsigned>&, const std::map<unsigned, unsigned>&);
+    void _Init(std::map<unsigned, graph_vertex_count_type>&,
+        std::map<unsigned, graph_vertex_count_type>&,
+        const std::map<unsigned, graph_vertex_count_type>&);
     void _Init();
 
     // Возврат. знач. не является значением модулярность
     // Только для операций сравнения < > =
-    double d_modular(const cluster& cl, const double& e_factor = 4.0)
+    double d_modular(unsigned cl_index, const double& e_factor = 4.0)
     {
-        return ((e_factor * edge_count)*cl.aij_sum - (cl.di_sum*cl.di_sum));
+        return ((e_factor * edge_count)*clusters[cl_index].aij_sum -
+            (clusters[cl_index].di_sum * clusters[cl_index].di_sum));
     }
 
     // Возврат. знач. не является значением модулярность
     // Только для операций сравнения < > =
-    double d_modular(const graph::iterator& it1, const graph::iterator& it2,
-                     const double& e_factor = 4.0)
+    double d_modular(unsigned gr_first, unsigned gr_second,
+        const double& e_factor = 4.0)
     {
-        return ((e_factor * edge_count)*temp_graph.count(it1, it2) -
-                pow(it1->second.in_d + it1->second.out_d +
-                    it2->second.in_d + it2->second.out_d, 2));
+        return ((e_factor * edge_count)*(temp_graph.count_by_index(
+            gr_first, gr_second) + temp_graph.count_by_index(gr_second,
+            gr_first)) - pow(temp_graph[gr_first].in_d + temp_graph[gr_first].out_d +
+            temp_graph[gr_second].in_d + temp_graph[gr_second].out_d, 2));
     }
 
     // Возврат. знач. не является значением модулярность
     // Только для операций сравнения < > =
-    double d_modular(const graph::iterator& it, const cluster& cl,
-                     unsigned aij_temp, const double& e_factor = 4.0)
+    double d_modular(unsigned gr_index, unsigned cl_index,
+        unsigned aij_temp, const double& e_factor = 4.0)
     {
-        return ((e_factor * edge_count)*(cl.aij_sum + aij_temp) -
-                pow(cl.di_sum + it->second.in_d + it->second.out_d, 2));
+        return ((e_factor * edge_count)*(clusters[cl_index].aij_sum + aij_temp) -
+            pow(clusters[cl_index].di_sum + temp_graph[gr_index].in_d +
+            temp_graph[gr_index].out_d, 2));
     }
 
-    bool move_anywhere(graph::iterator&, const double &e_factor = 4.0);
+    bool move_anywhere(unsigned, const double &e_factor = 4.0);
+
+    // not used
+    /*unsigned aijtemp_calc(const std::map<unsigned, graph_vertex_count_type>& mp,
+        const std::set<unsigned>& st)
+    {
+        unsigned ret = 0;
+        if (mp.size() < st.size())
+        {
+            if (mp.size()*log(st.size()) / log(2.0) <
+                mp.size() + st.size())
+            {
+                for (auto& i : mp)
+                {
+                    auto it = st.find(i.first);
+                    if (it != st.end())
+                        ret += i.second;
+                }
+            }
+            else
+            {
+                foreach_equal(mp, st, [&ret](const std::pair<unsigned,
+                    graph_vertex_count_type>& first, const unsigned& second)
+                {
+
+                }, p_less());
+            }
+        }
+        else
+        {
+            if (st.size()*log(mp.size()) / log(2.0) <
+                mp.size() + st.size())
+            {
+
+            }
+            else
+            {
+
+            }
+        }
+    }*/
 
 public:
     typedef std::function<void()> distributor;
