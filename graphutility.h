@@ -1,6 +1,8 @@
 ﻿#pragma once
 #ifndef _GRAPHUTILITY_H_
 #define _GRAPHUTILITY_H_
+
+#include <fstream>
 #include <random>
 #include <ctime>
 #include <algorithm>
@@ -8,7 +10,7 @@
 #include <unordered_map>
 #include "clusterisator.h"
 
-#include <fstream>
+#include <cuda.h>
 
 // Модель Боллобаша-Риордана
 graph preferred_attachment(unsigned, unsigned);
@@ -62,13 +64,18 @@ void print(const result_clusterisation&, const std::string &,
 void print(const result_clusterisation&, std::ostream&,
     double log_base = 1.5);
 
+// Ассортативность
 double assort(const graph&);
 
+// Ассортативность(вычисляется на gpu)
 double assort_gpu(const std::vector<std::vector<unsigned>>&,
     const std::vector<std::vector<unsigned>>&, unsigned);
 
+// Ассортативность для графа в виде списка рёбер
+// gr - путь к текстовому файлу списка рёбер
 double assort(const std::string &);
 
+// Диаметр графа(возвращает отображение длины пути на количество путей такой длины)
 std::map<unsigned, unsigned> diameter(const graph&);
 
 double rim(double, double e = 0.0001);

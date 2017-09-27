@@ -39,7 +39,10 @@ HEADERS  += mainwindow.h \
 FORMS    += mainwindow.ui \
     graphview.ui
 
-INCLUDEPATH += "C:/Graphviz2.38/include/graphviz"
+INCLUDEPATH += "C:/Graphviz2.38/include/graphviz" \
+    "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/include"
+
+LIBS += "-LC:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/lib/Win32"
 
 release {
     LIBS += "-LC:/Graphviz2.38/lib/release/lib"

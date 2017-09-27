@@ -1,7 +1,5 @@
 #include "mainwindow.h"
 #include <QApplication>
-#include <fstream>
-#include "graphutility.h"
 
 int main(int argc, char *argv[])
 {
