@@ -490,6 +490,9 @@ public:
     {
         return m;
     }
+
+	//Удаляет петли
+	unsigned erase_loops();
 };
 
 // Удаляет петли

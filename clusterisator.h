@@ -64,6 +64,16 @@ private:
 		cl->second.di_sum += temp_graph[gr_index].in_d + temp_graph[gr_index].out_d;
 	}
 
+	// Для тех случаев, когда у вершины нет смежных рёбер
+	// Возвращает номер созданного кластера.
+	unsigned make_cluster(unsigned gr_index)
+	{
+		unsigned ret = (clusters.empty()) ? 0 : (clusters.rbegin()->first + 1);
+		auto it = clusters.insert({ ret, cluster() }).first;
+		add_to_cl(it, gr_index, 0);
+		return ret;
+	}
+
 	// Объединение двух вершин в новый кластер.
 	// Возвращает номер созданного кластера.
 	unsigned make_cluster(unsigned gr_first, unsigned gr_second)
@@ -86,7 +96,8 @@ private:
 		const double& e_factor = 4.0)
 	{
 		int cur = temp_graph[gr_index].in_d + temp_graph[gr_index].out_d;
-		return 2 * edge_count*current_aij - cur*(cl.di_sum - cur - current_aij);
+		return 2 * (int)edge_count*((int)current_aij - (int)temp_graph[
+			gr_index].loop) - cur*((int)cl.di_sum - (int)cur - (int)current_aij);
 	}
 
 	// Возврат. знач. не является значением модулярность
@@ -94,9 +105,9 @@ private:
 	int d_modular(unsigned gr_first, unsigned gr_second,
 		const double& e_factor = 4.0)
 	{
-		return 2 * edge_count*(temp_graph.count_by_index(gr_first, gr_second) +
-			temp_graph.count_by_index(gr_second, gr_first)) -
-			(temp_graph[gr_first].in_d + temp_graph[gr_first].out_d)*(
+		return (int)(2 * edge_count*(temp_graph.count_by_index(gr_first, gr_second) +
+			temp_graph.count_by_index(gr_second, gr_first))) -
+			(int)(temp_graph[gr_first].in_d + temp_graph[gr_first].out_d)*(int)(
 			temp_graph[gr_second].in_d + temp_graph[gr_second].out_d);
 	}
 
@@ -105,8 +116,8 @@ private:
 	int d_modular(unsigned gr_index, const std::map<unsigned, cluster>::iterator& it_cl,
 		unsigned aij_temp, const double& e_factor = 4.0)
 	{
-		return 2 * edge_count*aij_temp - (temp_graph[gr_index].in_d +
-			temp_graph[gr_index].out_d)*it_cl->second.di_sum;
+		return (int)(2 * edge_count*aij_temp) - (int)((temp_graph[gr_index].in_d +
+			temp_graph[gr_index].out_d)*it_cl->second.di_sum);
 	}
 
 	bool move_anywhere(unsigned, const double &e_factor = 4.0);

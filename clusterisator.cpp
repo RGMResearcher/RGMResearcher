@@ -8,9 +8,8 @@ void clusterisator::erase_from_cl(std::map<unsigned, cluster>::
 {
 	it->second.g.erase(current);
 	v_to_cl[current] = -1;
-	if (it->second.g.size() == 1)
+	if (it->second.g.size() == 0)
 	{
-		v_to_cl[*it->second.g.begin()] = -1;
 		clusters.erase(it);
 		return;
 	}
@@ -113,8 +112,13 @@ bool clusterisator::move_anywhere(unsigned gr_index, const double& e_factor)
 	if (clcl != -1)
 	{
 		auto it = cl.find(clcl);
-		current_aij = it->second;
-		cl.erase(clcl);
+		if (it != cl.end())
+		{
+			current_aij = it->second;
+			cl.erase(clcl);
+		}
+		else
+			current_aij = 0;
 	}
 	else
 		current_aij = 0;
@@ -161,13 +165,14 @@ bool clusterisator::move_anywhere(unsigned gr_index, const double& e_factor)
 			}
 		}
 	}
-	if (flag == 0 || max.first <= 0)
-		return false;
-	// clcl если != 1 номер текущего кластера; -1 - если вне кластера
+	// clcl если != -1 номер текущего кластера; -1 - если вне кластера
 	if (clcl != -1)
 	{
+		if (flag == 0 || max.first <= 0)
+			return false;
 		auto yhg = clusters.find(clcl);
-		if (d_modular(yhg->second, current_aij, gr_index, e_factor) >= max.first)
+		auto p = d_modular(yhg->second, current_aij, gr_index, e_factor);
+		if (p >= max.first)
 			return false;
 		this->erase_from_cl(yhg, gr_index, current_aij);
 	}
@@ -175,6 +180,8 @@ bool clusterisator::move_anywhere(unsigned gr_index, const double& e_factor)
 		this->make_cluster(gr_index, max.second);
 	else if (flag == 2)
 		this->add_to_cl(cl_it, gr_index, cl[max.second]);
+	else
+		make_cluster(gr_index);
 
 	return true;
 }
@@ -194,6 +201,7 @@ void clusterisator::meta_graph()
 		unsigned out = v_to_cl[i.second];
 		auto it = tmp_result.find(v_to_cl[i.second]);
 		it->second.splice(it->second.end(), temp_result[i.first]);
+		meta_gr.connect_by_name(out, out, temp_graph[i.second].loop);
 		for (auto& j : temp_graph[i.second].output)
 		{
 			unsigned fr = v_to_cl[j.first];
@@ -202,25 +210,34 @@ void clusterisator::meta_graph()
 	}
 	temp_result = std::move(tmp_result);
 	temp_graph = std::move(meta_gr);
+	v_to_cl.resize(temp_graph.size());
+	for (auto& i : v_to_cl)
+		i = -1;
 }
 
-bool clusterisator::next_iteration(unsigned clusters_count, const double& e_factor)
+bool clusterisator::next_iteration(unsigned clusters_count,
+	const double& e_factor)
 {
 	clusters.clear();
-	bool contin;
-	do {
-		contin = false;
+	unsigned contin, contin_2 = temp_graph.size() * 2;
+	for (;;)
+	{
+		contin = 0;
 		for (unsigned i = 0; i < temp_graph.size(); ++i)
 		{
-			contin = (move_anywhere(i, e_factor) || contin);
+			if (move_anywhere(i, e_factor))
+				++contin;
 		}
-	} while (contin);
+		if (contin <= contin_2 && contin > 0)
+			contin_2 = contin;
+		else
+			break;
+	}
 
 	bool ret = (clusters.size() > clusters_count &&
 		clusters.size() < temp_graph.size());
 	if (ret)
 		meta_graph();
-	v_to_cl.clear();
 	return ret;
 }
 
@@ -234,5 +251,5 @@ double modular(const result_clusterisation& res)
 			res.connections[i.second].out_d, 2);
 	}
 	double t = 1.0 / (2.0 * res.connections.edge_count());
-	return t*(2.0*ret1 - t*ret2);
+	return t*(2.0*ret1 - res.loop_count - t*ret2);
 }

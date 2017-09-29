@@ -1,5 +1,18 @@
 ﻿#include "graph.h"
 
+// Удаляет петли
+unsigned graph::erase_loops()
+{
+	unsigned ret = 0;
+	for (auto& i : this->v)
+	{
+		m -= i.loop;
+		ret += i.loop;
+		i.loop = 0;
+	}
+	return ret;
+}
+
 void graph::erase(const std::pair<unsigned, unsigned>& p)
 {
     for (auto& i : v[p.second].input)
