@@ -1,5 +1,59 @@
 ﻿#include "graphutility.h"
 
+template<class _Iterator, class _Function>
+void parallel_for_each(const _Iterator& begin, const _Iterator& end,
+	const _Function& func, unsigned thread_count)
+{
+	std::thread** threads = new std::thread*[thread_count];
+	for (unsigned id = 0; id < thread_count; ++id)
+	{
+		threads[id] = new std::thread([id, &thread_count, &begin, &end, &func](){
+			auto it = begin;
+			for (unsigned char i = 0; i < id && it != end; ++i)
+				++it;
+			while (it != end)
+			{
+				func(*it, id);
+				for (unsigned char i = 0; i < thread_count && it != end; ++i)
+					++it;
+			}
+		});
+	}
+	for (unsigned i = 0; i < thread_count; ++i)
+	{
+		threads[i]->join();
+		delete threads[i];
+	}
+	delete[] threads;
+}
+
+template<class type, class _Function>
+void parallel_for(const type& begin, const type& end, const type& step,
+	const _Function& func, unsigned thread_count)
+{
+	std::thread** threads = new std::thread*[thread_count];
+	for (unsigned id = 0; id < thread_count; ++id)
+	{
+		threads[id] = new std::thread([id, &step, &thread_count, &begin, &end, &func](){
+			auto it = begin;
+			for (unsigned char i = 0; i < id && it < end; ++i)
+				it += step;
+			while (it < end)
+			{
+				func(it, id);
+				for (unsigned char i = 0; i < thread_count && it < end; ++i)
+					++it;
+			}
+		});
+	}
+	for (unsigned i = 0; i < thread_count; ++i)
+	{
+		threads[i]->join();
+		delete threads[i];
+	}
+	delete[] threads;
+}
+
 // Модель Боллобаша-Риордана
 graph preferred_attachment(unsigned n, unsigned m)
 {
@@ -98,7 +152,7 @@ std::map<unsigned, double> page_rank(const graph& gr, const double& c,
 // Генерирует кластеризованый граф
 // v_count - количество вершин, min_cl_size - минимальный размер кластера,
 // max_cl_size- максимальный размер кластера, q_cl - вероятность наличия ребра в кластере
-graph clustered_graph(unsigned v_count, unsigned min_cl_size,
+result_graph_generator clustered_graph(unsigned v_count, unsigned min_cl_size,
 					  unsigned max_cl_size, double q_cl)
 {
 	if (min_cl_size > max_cl_size || max_cl_size > v_count ||
@@ -108,7 +162,7 @@ graph clustered_graph(unsigned v_count, unsigned min_cl_size,
 	}
 	if (q_cl <= 0.5 || q_cl > 1)
 	{
-		throw(std::string("Wrong cl_size params"));
+		throw(std::string("Wrong q_cl params"));
 	}
 
 	std::uniform_int_distribution<int> dist(min_cl_size, max_cl_size);
@@ -150,29 +204,37 @@ graph clustered_graph(unsigned v_count, unsigned min_cl_size,
 			throw(std::string("Wrong cl_size params"));
 	}
 	// генерим кластеры размерностью size[i] каждый.
-	graph ret;
+	result_graph_generator ret;
+	ret.clusters.resize(size.size());
+	ret.vertexes.resize(v_count);
 	for (unsigned i = 0; i < v_count; ++i)
-		ret.new_vertex(i);
+		ret.gr.new_vertex(i);
 	std::vector<std::pair<unsigned, unsigned>> clusters;
 	for (unsigned b_begin = 0, cl = 0; cl < size.size(); ++cl)
 	{
 		unsigned b_end = b_begin + size[cl];
 		clusters.push_back({ b_begin, b_end });
 		for (unsigned i = b_begin; i < b_end; ++i)
+		{
+			ret.clusters[cl].g.push_back(i);
+			ret.vertexes[i] = cl;
 			for (unsigned j = i + 1; j < b_end; ++j)
 			{
 				if (q_def(gen) <= q_cl)
 				{
+					++ret.clusters[cl].aij_sum;
+					ret.clusters[cl].di_sum += 2;
 					if (in_out(gen) == 0)
-						ret.connect_by_index(j, i, 1);
+						ret.gr.connect_by_index(j, i, 1);
 					else
-						ret.connect_by_index(i, j, 1);
+						ret.gr.connect_by_index(i, j, 1);
 				}
 			}
-		auto end = ret.find(b_end);
-		for (auto it = ret.find(b_begin); it != end; ++it)
+		}
+		auto end = ret.gr.find(b_end);
+		for (auto it = ret.gr.find(b_begin); it != end; ++it)
 		{
-			if (ret[it->second].in_d + ret[it->second].out_d > 0)
+			if (ret.gr[it->second].in_d + ret.gr[it->second].out_d > 0)
 				continue;
 			std::uniform_int_distribution<int> rand_v(b_begin, b_end - 1);
 			unsigned r_v;
@@ -180,11 +242,13 @@ graph clustered_graph(unsigned v_count, unsigned min_cl_size,
 				r_v = rand_v(gen);
 			} while (r_v == it->first);
 
-			auto it1 = ret.find(r_v);
+			++ret.clusters[cl].aij_sum;
+			ret.clusters[cl].di_sum += 2;
+			auto it1 = ret.gr.find(r_v);
 			if (in_out(gen) == 0)
-				ret.connect(it1, it, 1);
+				ret.gr.connect(it1, it, 1);
 			else
-				ret.connect(it, it1, 1);
+				ret.gr.connect(it, it1, 1);
 		}
 		b_begin = b_end;
 	}
@@ -202,10 +266,12 @@ graph clustered_graph(unsigned v_count, unsigned min_cl_size,
 				{
 					if (q_def(gen) <= q_cl)
 						continue;
+					++ret.clusters[i].di_sum;
+					++ret.clusters[k].di_sum;
 					if (in_out(gen) == 0)
-						ret.connect_by_index(it_s, it_f, 1);
+						ret.gr.connect_by_index(it_s, it_f, 1);
 					else
-						ret.connect_by_index(it_f, it_s, 1);
+						ret.gr.connect_by_index(it_f, it_s, 1);
 				}
 			}
 		}
@@ -608,160 +674,76 @@ double assort(const std::string& gr)
 }
 
 // Диаметр графа(возвращает отображение длины пути на количество путей такой длины)
-std::map<unsigned, unsigned> diameter(const graph& gr)
+std::vector<unsigned> diameter(const graph& gr, unsigned ret_size)
 {
-	std::map<unsigned, unsigned> ret; // длина на количество путей такой длины
-	for (auto& i : gr)
-	{
-		std::vector<bool> used(gr.size(), false); // пройденные вершины
-		used[i.second] = true;
-		std::vector<std::queue<unsigned>> id(1);
-		id.back().push(i.second);
-		for (unsigned index = 0;; ++index)
+	std::mutex resize_mut;
+		unsigned t_count = std::thread::hardware_concurrency() * 2;
+		std::vector<std::vector<unsigned>> ret(ret_size, std::vector<unsigned>(t_count, 0));
+		parallel_for_each(gr.begin(), gr.end(),
+			[&](std::pair<unsigned, unsigned> i, unsigned t_id)
 		{
-			id.push_back(std::queue<unsigned>());
-			while (!id[index].empty())
+			//std::cout << i.second << std::endl;
+			std::vector<bool> used(gr.size(), false); // пройденные вершины
+			used[i.second] = true;
+			std::queue<unsigned> id;
+			id.push(i.second);
+			for (unsigned index = 0;;)
 			{
-				auto& it1 = gr[id[index].front()];
-				id[index].pop();
-				for (auto it2 = it1.output.upper_bound(i.second);
-					 it2 != it1.output.end(); ++it2)
+				std::queue<unsigned> new_id;
+				while (!id.empty())
 				{
-					if (!used[it2->first])
+					auto& it1 = gr[id.front()];
+					id.pop();
+					for (auto it2 = it1.output.upper_bound(i.second);
+						it2 != it1.output.end(); ++it2)
 					{
-						id[index + 1].push(it2->first);
-						used[it2->first] = true;
+						if (!used[it2->first])
+						{
+							new_id.push(it2->first);
+							used[it2->first] = true;
+						}
+					}
+					for (auto it2 = it1.input.upper_bound(i.second);
+						it2 != it1.input.end(); ++it2)
+					{
+						if (!used[it2->first])
+						{
+							new_id.push(it2->first);
+							used[it2->first] = true;
+						}
 					}
 				}
-				for (auto it2 = it1.input.upper_bound(i.second);
-					 it2 != it1.input.end(); ++it2)
-				{
-					if (!used[it2->first])
-					{
-						id[index + 1].push(it2->first);
-						used[it2->first] = true;
-					}
-				}
-			}
-			if (!id[index + 1].empty())
-			{
-				auto it = ret.find(index + 1);
-				if (it != ret.end())
-					it->second += id[index + 1].size();
+				++index;
+				if (new_id.empty())
+					break;
 				else
-					ret.insert({ index + 1, id[index + 1].size() });
+				{
+					if (ret.size() <= index)
+					{
+						std::lock_guard<std::mutex> lc(resize_mut);
+						if (ret.size() <= index)
+							ret.resize(index + 1, std::vector<unsigned>(t_count, 0));
+					}
+					ret[index][t_id] += new_id.size();
+				}
+				id = std::move(new_id);
 			}
-			else
-				break;
-		}
-	}
-	return ret;
+		}, t_count);
+		std::vector<unsigned> result(ret.size(), 0);
+		for (unsigned i = 0; i < result.size(); ++i)
+			for (unsigned k = 0; k < t_count; ++k)
+				result[i] += ret[i][k];
+		return result;
 }
 
-double rim(double a, double e)
+double modular(const result_graph_generator& res)
 {
-	double ret = 0, delt;
-	for (double i = 1;; ++i)
+	double sum1=0, sum2=0;
+	double t= 1.0/(2*res.gr.edge_count());
+	for(auto& i : res.clusters)
 	{
-		delt = 1.0 / pow(i, a);
-		if (delt <= e)
-			break;
-		ret += delt;
+		sum1 += i.aij_sum;
+		sum2 += i.di_sum * i.di_sum;
 	}
-	return ret;
-}
-
-double deg_distribution(const graph& gr)
-{
-	std::ofstream fout;
-	std::map<unsigned, unsigned> st;
-	for (auto& i : gr)
-	{
-		auto it = st.find(gr[i.second].in_d + gr[i.second].out_d);
-		if (it != st.end())
-			++it->second;
-		else
-			st.insert({ gr[i.second].in_d + gr[i.second].out_d, 1 });
-	}
-	double rt = 0, rt2 = 0;
-	//std::cout << 25117.3 / gr.size() << std::endl;
-	fout.open("deg.csv");
-	for (auto& i : st)
-	{
-		fout << (double)i.second / gr.size() << ";";
-		if (i.first != 0)
-			fout << (25117.3 / gr.size()) / std::pow(i.first, 1.19) << std::endl;
-		else
-			fout << (double)i.second / gr.size() << std::endl;
-	}
-	fout.close();
-	//std::cout << rt << std::ends << rt2;
-	std::pair<double, double>  p({ 20, 0 });
-	std::map<double, unsigned> mp;
-	for (auto& i : gr)
-	{
-		unsigned k = gr[i.second].in_d + gr[i.second].out_d;
-		if (k <= 1)
-			continue;
-		double val = log(25117.3*gr.size() / st[k]) / log(k);
-		auto it = mp.find(val);
-		if (it != mp.end())
-			++it->second;
-		else
-			mp.insert({ val, 1 });
-	}
-	fout.open("deg_dist.csv");
-
-	fout.close();
-	for (double c = 0.01412; c < 0.1414; c += 0.000001)
-	{
-		unsigned g = 0; std::vector<double> t;
-		for (auto& i : gr)
-		{
-			unsigned k = gr[i.second].in_d + gr[i.second].out_d;
-			if (k <= 1)
-				continue;
-			/*for (double a = 1.1; a < 20; a += 0.0005)
-			{
-			double rm = rim(a);
-			double delt = abs(a - log(rm*gr.size() / st[k]) / log(k));
-			if (delt < 0.005)
-			{
-			std::cout << a << std::ends << rm << std::endl;
-			break;
-			}
-			}*/
-			double delt = log(c*gr.size() / st[k]) / log(k);
-			t.push_back(delt);
-			++g;
-			if (g >= 50)
-				break;
-		}
-		std::sort(t.begin(), t.end());
-		if (t.back() - t.front() < p.first)
-		{
-			p.first = t.back() - t.front();
-			p.second = c;
-		}
-		t.clear();
-	}
-	return p.second;
-}
-
-new_graph generate(unsigned n, unsigned deg_min, unsigned deg_max)
-{
-	std::uniform_int_distribution<int> range(deg_min, deg_max);
-	std::uniform_int_distribution<int> size(0, n);
-	std::mt19937 gen(time(0));
-	new_graph ret(n);
-	for (auto& i : ret)
-	{
-		i.first = std::move(std::vector<unsigned>(range(gen)));
-		for (auto& k : i.first)
-			k = size(gen);
-		i.second = std::move(std::vector<unsigned>(range(gen)));
-		for (auto& k : i.second)
-			k = size(gen);
-	}
-	return ret;
+	return t*(2.0*sum1 - t*sum2);
 }

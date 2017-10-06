@@ -38,6 +38,7 @@ public:
         return (first.first < second.first);
     }
 };
+
 /*
 template<class datastruct1, class datastruct2, class lambda, class key_compare>
 // Выполняет функцию lambda для элементов пересечения ds1 и ds2.

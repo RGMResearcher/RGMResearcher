@@ -84,6 +84,8 @@ void clusterisator::_Init()
 	for (auto& i : v_to_cl)
 		i = -1;
 	loop_count = 0;
+	temp_result.clear();
+	clusters.clear();
 	for (auto& i : temp_graph)
 	{
 		temp_result.insert({ i.first, { i.first } });
