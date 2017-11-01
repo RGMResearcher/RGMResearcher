@@ -8,7 +8,7 @@ using namespace std;
 void example()
 {
 	fstream gr_file("graph.gv");
-	graph gr; string str;
+	graph_type gr; string str;
 	unsigned in, out;
 	while (getline(gr_file, str))
 	{
@@ -45,6 +45,6 @@ int main(int argc, char *argv[])
 	QApplication a(argc, argv);
 	MainWindow w;
 	w.show();
-
+	example();
 	return a.exec();
 }

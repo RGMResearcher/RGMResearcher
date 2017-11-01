@@ -26,7 +26,7 @@ void MainWindow::on_open_triggered()
             file->fileName().endsWith(QString(".gv")))
     {
         QTextStream fin(file);
-        graph gr;
+		graph_type gr;
         QString str;
         while (fin.readLineInto(&str))
         {

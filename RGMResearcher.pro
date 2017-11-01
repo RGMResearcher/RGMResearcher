@@ -24,23 +24,22 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-    clusterisator.cpp \
-    graph.cpp \
+		mainwindow.cpp \
+	clusterisator.cpp \
     graphutility.cpp \
     graphview.cpp
 
 HEADERS  += mainwindow.h \
-    clusterisator.h \
-    graph.h \
-    graphutility.h \
-    graphview.h
+	clusterisator.h \
+	graph.h \
+	graphutility.h \
+	graphview.h
 
 FORMS    += mainwindow.ui \
     graphview.ui
 
 INCLUDEPATH += "C:/Graphviz2.38/include/graphviz" \
-    "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/include"
+	"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/include"
 
 LIBS += "-LC:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v8.0/lib/Win32"
 
